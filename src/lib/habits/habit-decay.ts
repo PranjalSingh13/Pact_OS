@@ -121,13 +121,14 @@ export function calculateHabitStrengthDecay(
   // S(t) = S0 * 2^(-t / t_half)
   const rawStrength = initialStrength * Math.pow(2, -daysSinceLastCheckIn / halfLifeDays);
 
-  // currentStrength = roundTo1Decimal(max(minStrengthFloor, min(initialStrength, rawStrength)))
-  const clamped = Math.max(minStrengthFloor, Math.min(initialStrength, rawStrength));
+  // Clamp decay to the effective floor without allowing minStrengthFloor to exceed initialStrength
+  const effectiveFloor = Math.min(initialStrength, minStrengthFloor);
+  const clamped = Math.max(effectiveFloor, Math.min(initialStrength, rawStrength));
   const currentStrength = roundTo1Decimal(clamped);
 
-  // retentionFraction = initialStrength === 0 ? 0.0 : roundTo4Decimals(currentStrength / initialStrength)
+  // Calculate retention fraction from unrounded clamped strength to preserve ratio precision
   const retentionFraction =
-    initialStrength === 0 ? 0.0 : roundTo4Decimals(currentStrength / initialStrength);
+    initialStrength === 0 ? 0.0 : roundTo4Decimals(clamped / initialStrength);
 
   const status = determineStatus(currentStrength);
   const recommendation = RECOMMENDATIONS[status];

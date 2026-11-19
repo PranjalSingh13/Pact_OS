@@ -39,6 +39,16 @@ describe('Habit Strength Decay & Half-Life Calculator (habit-decay.ts)', () => {
         'Habit has become dormant. Re-anchor with a tiny trigger.'
       );
     });
+
+    it('preserves 100% retention on small fractional initial strengths with zero days elapsed', () => {
+      const assessment06 = calculateHabitStrengthDecay(0.06, 0);
+      assert.strictEqual(assessment06.currentStrength, 0.1);
+      assert.strictEqual(assessment06.retentionFraction, 1.0);
+
+      const assessment04 = calculateHabitStrengthDecay(0.04, 0);
+      assert.strictEqual(assessment04.currentStrength, 0.0);
+      assert.strictEqual(assessment04.retentionFraction, 1.0);
+    });
   });
 
   describe('Exact Half-Life Boundary (50% Retention)', () => {
@@ -101,12 +111,16 @@ describe('Habit Strength Decay & Half-Life Calculator (habit-decay.ts)', () => {
       );
     });
 
-    it('rounds to 0.0 strength and 0.0 retention after 100 days without a floor', () => {
-      const assessment = calculateHabitStrengthDecay(50, 100);
+    it('rounds to 0.0 strength and near-zero retention after 100+ days without a floor', () => {
+      const assessment100 = calculateHabitStrengthDecay(50, 100);
+      assert.strictEqual(assessment100.currentStrength, 0.0);
+      assert.strictEqual(assessment100.retentionFraction, 0.0001);
+      assert.strictEqual(assessment100.status, 'dormant');
 
-      assert.strictEqual(assessment.currentStrength, 0.0);
-      assert.strictEqual(assessment.retentionFraction, 0.0);
-      assert.strictEqual(assessment.status, 'dormant');
+      const assessment150 = calculateHabitStrengthDecay(50, 150);
+      assert.strictEqual(assessment150.currentStrength, 0.0);
+      assert.strictEqual(assessment150.retentionFraction, 0.0);
+      assert.strictEqual(assessment150.status, 'dormant');
     });
   });
 
@@ -131,6 +145,18 @@ describe('Habit Strength Decay & Half-Life Calculator (habit-decay.ts)', () => {
       assert.strictEqual(assessment.currentStrength, 74.3);
       assert.strictEqual(assessment.retentionFraction, 0.743);
       assert.strictEqual(assessment.status, 'fading');
+    });
+
+    it('does not allow minStrengthFloor to artificially raise strength above initialStrength', () => {
+      const assessment = calculateHabitStrengthDecay(5, 0, {
+        minStrengthFloor: 20,
+      });
+
+      // Starting strength is 5; minStrengthFloor 20 must not boost strength or produce retention > 1.0
+      assert.strictEqual(assessment.currentStrength, 5.0);
+      assert.strictEqual(assessment.retentionFraction, 1.0);
+      assert.ok(assessment.retentionFraction <= 1.0);
+      assert.strictEqual(assessment.status, 'dormant');
     });
   });
 
